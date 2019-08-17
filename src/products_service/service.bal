@@ -5,8 +5,8 @@ import ballerina/io;
 import ballerinax/java.jdbc;
 import server_core;
 
-server_core:ServerConfig conf = {};
-
+listener http:Listener wum_server_listener = server_core:getServerListener();
+// jdbc:Client dbClient = server_core:getProductsDbClient();
 jdbc:Client dbClient = new({
     url: "jdbc:mysql://localhost:3306/productsdb_300_wso2umuat?useTimezone=true&serverTimezone=UTC",
     username: "root",
@@ -15,18 +15,73 @@ jdbc:Client dbClient = new({
     dbOptions: { useSSL: false }
 });
 
-service products on new http:Listener(conf.products_port) {
-// service products on server_core:wum_server_listener {
 
+service products on wum_server_listener {
     # A resource is an invokable API method
     # Accessible at '/products/getProducts
     # 'caller' is the client invoking this resource 
 
     # + caller - Server Connector
     # + request - Request
+    @http:ResourceConfig {
+        methods: ["GET"],
+        path: "/getProducts",
+        produces: ["application/json"],
+        auth: {
+            scopes: ["hello"],
+            enabled: true
+        }
+    }
     resource function getProducts(http:Caller caller, http:Request request) {
-
         var products = dbClient->select("SELECT * FROM products", server_core:Products);
+        if (products is table<server_core:Products>) {
+            var jsonProducts = typedesc<json>.constructFrom(products);
+            if (jsonProducts is json) {
+                error? result = caller->respond(<@untainted> jsonProducts);
+                if (result is error) {
+                    io:println("Error in responding", result);
+                }
+                return;
+            }
+        }
+        error? result = caller->respond({});
+        if (result is error) {
+            io:println("Error in responding", result);
+        }
+    }
+
+    # A resource is an invokable API method
+    # Accessible at '/products/search
+    # 'caller' is the client invoking this resource 
+
+    # + caller - Server Connector
+    # + request - Request
+    @http:ResourceConfig {
+        methods: ["GET"],
+        path: "/search/{productName}/version/{productVersion}",
+        produces: ["application/json"],
+        auth: {
+            scopes: ["hello"],
+            enabled: true
+        }
+    }
+    resource function searchProducts(http:Caller caller, http:Request request, string productName, string productVersion) {
+
+        // do proper taint checking
+        string whereClause = " ";
+        if ((productName != "*") || (productVersion != "*")) {
+            whereClause = " WHERE";
+            if (productName  != "*") {
+                whereClause += " product_name=\"" + productName + "\"";
+                if (productVersion  != "*") {
+                    whereClause += " AND product_version=\"" + productVersion + "\"";
+                }
+            } else if (productVersion  != "*") {
+                whereClause += " product_version=\"" + productVersion + "\"";
+            }
+        }
+
+        var products = dbClient->select("SELECT * FROM products" + <@untiant> whereClause, server_core:Products);
         if (products is table<server_core:Products>) {
             var jsonProducts = typedesc<json>.constructFrom(products);
             if (jsonProducts is json) {

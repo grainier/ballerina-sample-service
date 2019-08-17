@@ -1,3 +1,1 @@
-# Hello Service
-
-Serves "hello world" over HTTP GET
+# Channels Service

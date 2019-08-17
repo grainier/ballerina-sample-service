@@ -1,3 +1,2 @@
-# Hello World
+# Server Core
 
-Prints "hello world" to command line output

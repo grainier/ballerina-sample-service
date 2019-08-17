@@ -3,18 +3,11 @@ import ballerina/io;
 import ballerinax/java.jdbc;
 import server_core;
 
-server_core:ServerConfig conf = {};
+listener http:Listener wum_server_listener = server_core:getServerListener();
 
-jdbc:Client dbClient = new({
-    url: "jdbc:mysql://localhost:3306/updatesdb_300_wso2umuat?useTimezone=true&serverTimezone=UTC",
-    username: "root",
-    password: "root",
-    poolOptions: { maximumPoolSize: 5 },
-    dbOptions: { useSSL: false }
-});
+// jdbc:Client dbClient = server_core:getUpdatesDbClient();
 
-service updates on new http:Listener(conf.updates_port) {
-// service updates on server_core:wum_server_listener {
+service updates on wum_server_listener {
 
     # A resource is an invokable API method
     # Accessible at '/updates/test
